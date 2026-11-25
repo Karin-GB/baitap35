@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách sản phẩm - Bài tập 35</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f4f6f9;
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #1e293b;
+    }
+
+    /* Thanh tìm kiếm */
+    .search-box {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    #searchInput {
+      width: 100%;
+      max-width: 500px;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #searchInput:focus {
+      border-color: #2563eb;
+    }
+
+    /* Danh sách sản phẩm dùng CSS Grid Responsive */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .product-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .product-category {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .product-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 10px;
+    }
+
+    .product-desc {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    .product-price {
+      font-size: 17px;
+      font-weight: bold;
+      color: #dc2626;
+    }
+
+    /* Thông báo lỗi khi không tìm thấy */
+    .error-message {
+      text-align: center;
+      color: #b91c1c;
+      background-color: #fee2e2;
+      border: 1px solid #fecaca;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Danh Sách Sản Phẩm Công Nghệ</h1>
+
+    <div class="search-box">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Nhập tên sản phẩm cần tìm..."
+        autocomplete="off"
+      />
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+    <div id="productList" class="product-grid"></div>
+  </div>
+
+  <script>
+    // 1. Mảng dữ liệu sản phẩm (6 sản phẩm)
+    const products = [
+      {
+        id: 1,
+        name: "Laptop MacBook Air M2",
+        category: "Laptop",
+        price: 24990000,
+        description: "Chip Apple M2 mạnh mẽ, thiết kế siêu mỏng nhẹ, pin dùng cả ngày."
+      },
+      {
+        id: 2,
+        name: "Điện thoại iPhone 15 Pro",
+        category: "Điện thoại",
+        price: 27990000,
+        description: "Khung viền Titan cao cấp, chip A17 Pro, camera zoom quang học sắc nét."
+      },
+      {
+        id: 3,
+        name: "Tai nghe Sony WH-1000XM5",
+        category: "Âm thanh",
+        price: 7490000,
+        description: "Chống ồn chủ động hàng đầu, âm thanh Hi-Res, đeo êm ái."
+      },
+      {
+        id: 4,
+        name: "Bàn phím cơ Keychron K2",
+        category: "Phụ kiện",
+        price: 1850000,
+        description: "Layout 75% gọn gàng, kết nối Bluetooth đa thiết bị, LED RGB."
+      },
+      {
+        id: 5,
+        name: "Chuột không dây Logitech MX Master 3S",
+        category: "Phụ kiện",
+        price: 2290000,
+        description: "Thiết kế công thái học, cuộn siêu nhanh, click siêu êm."
+      },
+      {
+        id: 6,
+        name: "Màn hình Dell UltraSharp 27 inch",
+        category: "Màn hình",
+        price: 11500000,
+        description: "Độ phân giải 4K sắc nét, chuẩn màu đồ họa, cổng USB-C tiện lợi."
+      }
+    ];
+
+    const productListEl = document.getElementById("productList");
+    const errorMessageEl = document.getElementById("errorMessage");
+    const searchInputEl = document.getElementById("searchInput");
+
+    // Định dạng tiền tệ VNĐ
+    const formatPrice = (price) =>
+      price.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+
+    // 2. Hàm hiển thị danh sách sản phẩm an toàn (chống XSS Injection)
+    function renderProducts(list, keyword = "") {
+      productListEl.innerHTML = "";
+
+      if (list.length === 0) {
+        // Dùng textContent thay vì innerHTML để tránh XSS khi hiển thị lại input người dùng
+        errorMessageEl.textContent = `Không tìm thấy sản phẩm nào khớp với từ khóa "${keyword}".`;
+        errorMessageEl.style.display = "block";
+        return;
+      }
+
+      errorMessageEl.style.display = "none";
+
+      // Sử dụng DocumentFragment để tối ưu hiệu năng render DOM
+      const fragment = document.createDocumentFragment();
+
+      list.forEach((product) => {
+        const card = document.createElement("div");
+        card.className = "product-card";
+
+        const topDiv = document.createElement("div");
+
+        const categoryEl = document.createElement("div");
+        categoryEl.className = "product-category";
+        categoryEl.textContent = product.category;
+
+        const nameEl = document.createElement("h2");
+        nameEl.className = "product-name";
+        nameEl.textContent = product.name;
+
+        const descEl = document.createElement("p");
+        descEl.className = "product-desc";
+        descEl.textContent = product.description;
+
+        topDiv.appendChild(categoryEl);
+        topDiv.appendChild(nameEl);
+        topDiv.appendChild(descEl);
+
+        const priceEl = document.createElement("div");
+        priceEl.className = "product-price";
+        priceEl.textContent = formatPrice(product.price);
+
+        card.appendChild(topDiv);
+        card.appendChild(priceEl);
+        fragment.appendChild(card);
+      });
+
+      productListEl.appendChild(fragment);
+    }
+
+    // 3. Hàm Debounce để tối ưu tìm kiếm (tránh lọc liên tục mỗi khi gõ 1 phím)
+    function debounce(func, delay) {
+      let timeoutId;
+      return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
+
+    // 4. Hàm xử lý tìm kiếm
+    function handleSearch() {
+      // Chuẩn hóa input: xóa khoảng trắng thừa đầu/cuối và chuyển về chữ thường
+      const rawKeyword = searchInputEl.value.trim();
+      const normalizedKeyword = rawKeyword.toLowerCase();
+
+      const filteredProducts = products.filter((product) =>
+        product.name.toLowerCase().includes(normalizedKeyword)
+      );
+
+      renderProducts(filteredProducts, rawKeyword);
+    }
+
+    // Gắn sự kiện lắng nghe input với debounce 250ms
+    searchInputEl.addEventListener("input", debounce(handleSearch, 250));
+
+    // Hiển thị toàn bộ sản phẩm khi tải trang lần đầu
+    renderProducts(products);
+  </script>
+</body>
+</html>
